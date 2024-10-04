@@ -1,51 +1,36 @@
 pipeline {
-    agent any 
+    agent any
 
     environment {
-        DOCKER_CREDENTIALS_ID = 'docker-cred' // Jenkins credentials ID for Docker Hub
-        DOCKER_IMAGE_NAME = 'raghavdiwakar/cicd-image'
+        DOCKER_IMAGE = 'raghavdiwakar/cicd'
+        DOCKER_CREDENTIALS_ID = 'docker-cred' // Add your Docker Hub credentials ID
     }
 
     stages {
-        stage('Checkout') {
+        stage('Clone Repository') {
             steps {
-                // Pull the latest code from the GitHub repository
-                git url: 'https://github.com/Raghav-Diwakar/CICD.git', branch: 'main'
+                git 'https://github.com/Raghav-Diwakar/CICD.git'
             }
         }
-
         stage('Build Docker Image') {
             steps {
                 script {
-                    // Attempt to get the latest version tag from Docker images
-                    def latestTag = sh(script: "docker images --format '{{.Tag}}' ${DOCKER_IMAGE_NAME} | sort -V | tail -n 1", returnStdout: true).trim()
-                    
-                    // Determine new version based on the latest tag
-                    def newVersion
-                    if (latestTag) {
-                        newVersion = latestTag.toInteger() + 1 // Increment existing version
-                    } else {
-                        newVersion = 1 // Start from version 1 if no tags exist
-                    }
-                    
-                    def newTag = "${newVersion}"
+                    // Get the latest image tags
+                    def latestTag = sh(script: "docker images ${DOCKER_IMAGE} --format '{{.Tag}}' | sort -V | tail -n 1", returnStdout: true).trim()
+                    def newTag = "${latestTag.split('\\.')[0]}.${latestTag.split('\\.')[1].toInteger() + 1}"
 
-                    // Build the Docker image with the new tag
-                    sh "docker build -t ${DOCKER_IMAGE_NAME}:${newTag} ."
+                    // Build the new image
+                    sh "docker build -t ${DOCKER_IMAGE}:${newTag} ."
                 }
             }
         }
-
         stage('Push Docker Image') {
             steps {
-                script {
-                    // Login to Docker Hub
-                    withCredentials([usernamePassword(credentialsId: DOCKER_CREDENTIALS_ID, usernameVariable: 'DOCKER_HUB_USERNAME', passwordVariable: 'DOCKER_HUB_PASSWORD')]) {
-                        sh "echo \$DOCKER_HUB_PASSWORD | docker login -u \$DOCKER_HUB_USERNAME --password-stdin"
+                withCredentials([usernamePassword(credentialsId: DOCKER_CREDENTIALS_ID, usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                    script {
+                        sh "echo ${DOCKER_PASSWORD} | docker login -u ${DOCKER_USERNAME} --password-stdin"
+                        sh "docker push ${DOCKER_IMAGE}:${newTag}"
                     }
-                    
-                    // Push the new Docker image to Docker Hub
-                    sh "docker push ${DOCKER_IMAGE_NAME}:${newTag}"
                 }
             }
         }
