@@ -4,7 +4,7 @@ pipeline {
     environment {
         DOCKER_CREDENTIALS_ID = 'docker-cred' // Jenkins credential ID for Docker Hub
         DOCKER_IMAGE_NAME = 'raghavdiwakar/cicd' // Docker Hub image name without tag
-        CURRENT_VERSION = '1.0' // Current version
+        CURRENT_VERSION = '1.0' // Default current version
     }
 
     stages {
@@ -14,16 +14,38 @@ pipeline {
                 git url: 'https://github.com/Raghav-Diwakar/CICD.git', branch: 'main'
             }
         }
-        
-        stage('Build Docker Image') {
+
+        stage('Get Previous Tag') {
             steps {
                 script {
-                    // Increment the version
-                    def newVersion = (CURRENT_VERSION.tokenize('.').collect { it as int }.last() + 1)
+                    // Fetch tags from GitHub and get the highest version tag
+                    def tags = sh(script: 'git tag', returnStdout: true).trim().split('\n')
+                    def previousVersion = CURRENT_VERSION
+
+                    // Check for the highest version tag
+                    tags.each { tag ->
+                        if (tag.isNumber()) { // Check if tag is a valid number
+                            def tagVersion = tag.tokenize('.').collect { it as int }
+                            def currentVersionList = previousVersion.tokenize('.').collect { it as int }
+
+                            if (tagVersion > currentVersionList) {
+                                previousVersion = tag // Update to the highest version tag
+                            }
+                        }
+                    }
+                    
+                    // Increment the version (Assuming it's in X.Y format)
+                    def newVersion = (previousVersion.tokenize('.').collect { it as int }.last() + 1)
                     newTag = "${newVersion}.0" // Declare newTag here for global access
 
                     echo "Building Docker image with tag: ${newTag}"
+                }
+            }
+        }
 
+        stage('Build Docker Image') {
+            steps {
+                script {
                     // Build the Docker image with the new tag
                     sh "docker build -t ${DOCKER_IMAGE_NAME}:${newTag} ."
                 }
