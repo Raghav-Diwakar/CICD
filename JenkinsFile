@@ -20,7 +20,7 @@ pipeline {
                 script {
                     // Increment the version
                     def newVersion = (CURRENT_VERSION.tokenize('.').collect { it as int }.last() + 1)
-                    def newTag = "${newVersion}.0"
+                    newTag = "${newVersion}.0" // Declare newTag here for global access
 
                     echo "Building Docker image with tag: ${newTag}"
 
