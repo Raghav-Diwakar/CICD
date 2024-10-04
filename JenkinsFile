@@ -3,13 +3,15 @@ pipeline {
 
     environment {
         DOCKER_IMAGE = 'raghavdiwakar/cicd'
-        DOCKER_CREDENTIALS_ID = 'docker-cred' // Add your Docker Hub credentials ID
+        DOCKER_CREDENTIALS_ID = 'docker-cred' // Docker Hub credentials
+        GITHUB_CREDENTIALS_ID = 'github' // GitHub credentials
     }
 
     stages {
         stage('Clone Repository') {
             steps {
-                git 'https://github.com/Raghav-Diwakar/CICD.git'
+                // Clone the repository using GitHub credentials
+                git branch: 'main', url: 'https://github.com/Raghav-Diwakar/CICD.git', credentialsId: GITHUB_CREDENTIALS_ID
             }
         }
         stage('Build Docker Image') {
