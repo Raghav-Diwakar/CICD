@@ -3,33 +3,24 @@ pipeline {
 
     environment {
         DOCKER_CREDENTIALS_ID = 'docker-cred' // Jenkins credential ID for Docker Hub
-        DOCKER_IMAGE_NAME = 'raghavdiwakar/cicd' // Docker Hub image name
-        GIT_REPO_URL = 'https://github.com/Raghav-Diwakar/CICD.git' // Your GitHub repository URL
+        DOCKER_IMAGE_NAME = 'raghavdiwakar/cicd' // Docker Hub image name without tag
+        CURRENT_VERSION = '1.0' // Current version
     }
 
     stages {
         stage('Checkout Code') {
             steps {
                 echo 'Checking out code from GitHub...'
-                git url: "${GIT_REPO_URL}", branch: 'main'
+                git url: 'https://github.com/Raghav-Diwakar/CICD.git', branch: 'main'
             }
         }
         
         stage('Build Docker Image') {
             steps {
                 script {
-                    // Get the latest tag from Docker Hub
-                    def latestTag = sh(script: "docker pull ${DOCKER_IMAGE_NAME}:latest || echo 'latest'", returnStdout: true).trim()
-
-                    // Parse the latest version tag
-                    def currentVersion = '0'
-                    if (latestTag != 'latest') {
-                        currentVersion = latestTag.tokenize('.').last() as int
-                    }
-
                     // Increment the version
-                    def newVersion = currentVersion + 1
-                    def newTag = "${newVersion}"
+                    def newVersion = (CURRENT_VERSION.tokenize('.').collect { it as int }.last() + 1)
+                    def newTag = "${newVersion}.0"
 
                     echo "Building Docker image with tag: ${newTag}"
 
