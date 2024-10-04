@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: CICD
+  labels:
+    app: CICD
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: CICD
+  template:
+    metadata:
+      labels:
+        app: CICD
+    spec:
+      containers:
+      - name: CICD
+        image: raghavdiwakar/cicd-image:replaceImageTag
+        ports:
+        - containerPort: 8080
