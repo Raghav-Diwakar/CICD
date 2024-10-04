@@ -1,31 +1,69 @@
 pipeline {
-    agent any
+    agent any 
+
+    environment {
+        DOCKER_CREDENTIALS_ID = 'docker-cred' // Jenkins credential ID for Docker Hub
+        DOCKER_IMAGE_NAME = 'raghavdiwakar/cicd' // Docker Hub image name
+        GIT_REPO_URL = 'https://github.com/Raghav-Diwakar/CICD.git' // Your GitHub repository URL
+    }
 
     stages {
-        stage('Checkout SCM') {
+        stage('Checkout Code') {
             steps {
-                checkout scm
+                echo 'Checking out code from GitHub...'
+                git url: "${GIT_REPO_URL}", branch: 'main'
             }
         }
-        stage('Check Docker Hub Configuration') {
+        
+        stage('Build Docker Image') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'docker-cred', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                    script {
-                        // Login to Docker Hub
-                        sh "echo ${DOCKER_PASSWORD} | docker login -u ${DOCKER_USERNAME} --password-stdin"
+                script {
+                    // Get the latest tag from Docker Hub
+                    def latestTag = sh(script: "docker pull ${DOCKER_IMAGE_NAME}:latest || echo 'latest'", returnStdout: true).trim()
 
-                        // Pull the specific tag
-                        def imageName = "raghavdiwakar/cicd:1.0"
-                        def pullOutput = sh(script: "docker pull ${imageName}", returnStatus: true)
-                        
-                        if (pullOutput != 0) {
-                            error "Docker Hub configuration check failed. Image '${imageName}' not found."
-                        } else {
-                            echo "Successfully pulled image '${imageName}'."
-                        }
+                    // Parse the latest version tag
+                    def currentVersion = '0'
+                    if (latestTag != 'latest') {
+                        currentVersion = latestTag.tokenize('.').last() as int
                     }
+
+                    // Increment the version
+                    def newVersion = currentVersion + 1
+                    def newTag = "${newVersion}"
+
+                    echo "Building Docker image with tag: ${newTag}"
+
+                    // Build the Docker image with the new tag
+                    sh "docker build -t ${DOCKER_IMAGE_NAME}:${newTag} ."
                 }
             }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                script {
+                    // Login to Docker Hub
+                    withCredentials([usernamePassword(credentialsId: DOCKER_CREDENTIALS_ID, usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                        sh "echo \$DOCKER_PASSWORD | docker login -u \$DOCKER_USERNAME --password-stdin"
+                    }
+
+                    // Push the newly built image to Docker Hub
+                    sh "docker push ${DOCKER_IMAGE_NAME}:${newTag}"
+
+                    // Optionally push the image as the latest version
+                    sh "docker tag ${DOCKER_IMAGE_NAME}:${newTag} ${DOCKER_IMAGE_NAME}:latest"
+                    sh "docker push ${DOCKER_IMAGE_NAME}:latest"
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed!'
         }
     }
 }
