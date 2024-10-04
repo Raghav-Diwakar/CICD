@@ -8,16 +8,14 @@ pipeline {
   stages {
     stage('Checkout') {
       steps {
-        sh 'echo passed' // Placeholder for Git checkout
-        // Uncomment the following line to enable Git checkout
+         echo 'Checking out source code...'
         git branch: 'main', url: 'https://github.com/Raghav-Diwakar/CICD.git'
       }
     } 
     stage('Build and Test') {
       steps {
         sh 'ls -ltr' // List files in the current directory
-        // Add build steps for your project here
-        sh 'ls' // Change directory (not doing anything further here)
+        
       }
     }
     stage('Static Code Analysis') {
