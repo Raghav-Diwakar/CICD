@@ -1,29 +1,41 @@
 pipeline {
-    agent any
+    agent any 
+
+    environment {
+        DOCKER_CREDENTIALS_ID = 'docker-cred' // Replace with your Docker credentials ID
+        DOCKER_IMAGE = 'raghavdiwakar/cicd' // Replace with your Docker image name
+    }
+
     stages {
-        stage('Check GitHub Configuration') {
+        stage('Check Docker Hub Configuration') {
             steps {
                 script {
-                    // Replace with your GitHub repository URL
-                    def repoUrl = 'https://github.com/Raghav-Diwakar/CICD.git'
-                    // Optional: Use credentials ID if required
-                    def credentialsId = 'github'
-
-                    // Check if the Git installation exists
-                    if (sh(script: 'git --version', returnStatus: true) != 0) {
-                        error "Git is not installed or not configured correctly."
+                    // Try to log in to Docker Hub
+                    withCredentials([usernamePassword(credentialsId: DOCKER_CREDENTIALS_ID, usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                        // Run the docker login command
+                        sh '''
+                        echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+                        '''
                     }
-
-                    // Try to clone the repository to check GitHub configuration
-                    def result = sh(script: "git clone ${repoUrl} --branch main --single-branch", returnStatus: true)
+                    // Verify login by checking for the image
+                    def imageCheck = sh(script: "docker pull ${DOCKER_IMAGE}", returnStatus: true)
                     
-                    if (result == 0) {
-                        echo "Successfully cloned the repository. GitHub is configured correctly."
+                    if (imageCheck == 0) {
+                        echo "Docker Hub is configured correctly. Image found."
                     } else {
-                        error "Failed to clone the repository. Check your GitHub credentials or repository URL."
+                        error("Docker Hub is configured, but the image could not be found.")
                     }
                 }
             }
+        }
+    }
+
+    post {
+        success {
+            echo 'Docker Hub configuration check completed successfully.'
+        }
+        failure {
+            echo 'Docker Hub configuration check failed.'
         }
     }
 }
