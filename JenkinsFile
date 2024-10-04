@@ -17,7 +17,7 @@ pipeline {
       steps {
         sh 'ls -ltr' // List files in the current directory
         // Add build steps for your project here
-        sh 'cd CICD' // Change directory (not doing anything further here)
+        sh 'ls' // Change directory (not doing anything further here)
       }
     }
     stage('Static Code Analysis') {
