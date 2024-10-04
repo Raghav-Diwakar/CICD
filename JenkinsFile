@@ -1,37 +1,26 @@
 pipeline {
     agent any
-
-    environment {
-        DOCKER_IMAGE = 'raghavdiwakar/cicd'
-        DOCKER_CREDENTIALS_ID = 'docker-cred' // Docker Hub credentials
-        GITHUB_CREDENTIALS_ID = 'github' // GitHub credentials
-    }
-
     stages {
-        stage('Clone Repository') {
-            steps {
-                // Clone the repository using GitHub credentials
-                git branch: 'main', url: 'https://github.com/Raghav-Diwakar/CICD.git', credentialsId: GITHUB_CREDENTIALS_ID
-            }
-        }
-        stage('Build Docker Image') {
+        stage('Check GitHub Configuration') {
             steps {
                 script {
-                    // Get the latest image tags
-                    def latestTag = sh(script: "docker images ${DOCKER_IMAGE} --format '{{.Tag}}' | sort -V | tail -n 1", returnStdout: true).trim()
-                    def newTag = "${latestTag.split('\\.')[0]}.${latestTag.split('\\.')[1].toInteger() + 1}"
+                    // Replace with your GitHub repository URL
+                    def repoUrl = 'https://github.com/Raghav-Diwakar/CICD.git'
+                    // Optional: Use credentials ID if required
+                    def credentialsId = 'github'
 
-                    // Build the new image
-                    sh "docker build -t ${DOCKER_IMAGE}:${newTag} ."
-                }
-            }
-        }
-        stage('Push Docker Image') {
-            steps {
-                withCredentials([usernamePassword(credentialsId: DOCKER_CREDENTIALS_ID, usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                    script {
-                        sh "echo ${DOCKER_PASSWORD} | docker login -u ${DOCKER_USERNAME} --password-stdin"
-                        sh "docker push ${DOCKER_IMAGE}:${newTag}"
+                    // Check if the Git installation exists
+                    if (sh(script: 'git --version', returnStatus: true) != 0) {
+                        error "Git is not installed or not configured correctly."
+                    }
+
+                    // Try to clone the repository to check GitHub configuration
+                    def result = sh(script: "git clone ${repoUrl} --branch main --single-branch", returnStatus: true)
+                    
+                    if (result == 0) {
+                        echo "Successfully cloned the repository. GitHub is configured correctly."
+                    } else {
+                        error "Failed to clone the repository. Check your GitHub credentials or repository URL."
                     }
                 }
             }
