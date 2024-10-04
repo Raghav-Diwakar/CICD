@@ -1,41 +1,31 @@
 pipeline {
-    agent any 
-
-    environment {
-        DOCKER_CREDENTIALS_ID = 'docker-cred' // Replace with your Docker credentials ID
-        DOCKER_IMAGE = 'raghavdiwakar/cicd' // Replace with your Docker image name
-    }
+    agent any
 
     stages {
+        stage('Checkout SCM') {
+            steps {
+                checkout scm
+            }
+        }
         stage('Check Docker Hub Configuration') {
             steps {
-                script {
-                    // Try to log in to Docker Hub
-                    withCredentials([usernamePassword(credentialsId: DOCKER_CREDENTIALS_ID, usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                        // Run the docker login command
-                        sh '''
-                        echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
-                        '''
-                    }
-                    // Verify login by checking for the image
-                    def imageCheck = sh(script: "docker pull ${DOCKER_IMAGE}", returnStatus: true)
-                    
-                    if (imageCheck == 0) {
-                        echo "Docker Hub is configured correctly. Image found."
-                    } else {
-                        error("Docker Hub is configured, but the image could not be found.")
+                withCredentials([usernamePassword(credentialsId: 'your-dockerhub-credentials-id', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                    script {
+                        // Login to Docker Hub
+                        sh "echo ${DOCKER_PASSWORD} | docker login -u ${DOCKER_USERNAME} --password-stdin"
+
+                        // Pull the specific tag
+                        def imageName = "raghavdiwakar/cicd:1.0"
+                        def pullOutput = sh(script: "docker pull ${imageName}", returnStatus: true)
+                        
+                        if (pullOutput != 0) {
+                            error "Docker Hub configuration check failed. Image '${imageName}' not found."
+                        } else {
+                            echo "Successfully pulled image '${imageName}'."
+                        }
                     }
                 }
             }
-        }
-    }
-
-    post {
-        success {
-            echo 'Docker Hub configuration check completed successfully.'
-        }
-        failure {
-            echo 'Docker Hub configuration check failed.'
         }
     }
 }
